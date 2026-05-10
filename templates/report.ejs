@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitInsight - <%= repo %></title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    :root {
+      --bg: #0f172a; --surface: #1e293b; --border: #334155;
+      --text: #e2e8f0; --text-dim: #94a3b8; --accent: #3b82f6;
+      --green: #10b981; --red: #ef4444; --yellow: #f59e0b; --purple: #8b5cf6;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    header { text-align: center; margin-bottom: 3rem; }
+    header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+    header h1 span { color: var(--accent); }
+    header .desc { color: var(--text-dim); font-size: 1.1rem; }
+    .meta { display: flex; justify-content: center; gap: 2rem; margin-top: 1rem; color: var(--text-dim); font-size: 0.9rem; }
+    .meta span { display: flex; align-items: center; gap: 0.3rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+    .card h3 { font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .card .value { font-size: 2rem; font-weight: 700; }
+    .card .sub { font-size: 0.85rem; color: var(--text-dim); margin-top: 0.25rem; }
+    .section { margin-bottom: 2.5rem; }
+    .section h2 { font-size: 1.4rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+    .chart-container { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 768px) { .chart-row { grid-template-columns: 1fr; } }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+    th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: rgba(59, 130, 246, 0.1); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .badge { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+    .badge-green { background: rgba(16,185,129,0.15); color: var(--green); }
+    .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+    .badge-yellow { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .badge-blue { background: rgba(59,130,246,0.15); color: var(--accent); }
+    .lang-bar { display: flex; height: 24px; border-radius: 6px; overflow: hidden; margin-top: 0.5rem; }
+    .lang-bar div { display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; color: #fff; min-width: 30px; }
+    .lang-legend { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem; font-size: 0.85rem; }
+    .lang-legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .lang-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .footer { text-align: center; color: var(--text-dim); font-size: 0.85rem; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+    canvas { max-height: 300px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1><span>GitInsight</span> Report</h1>
+      <p class="desc"><%= analysis.code.description || repo %></p>
+      <div class="meta">
+        <span>&#11088; <%= analysis.code.stars %> stars</span>
+        <span>&#128260; <%= analysis.code.forks %> forks</span>
+        <span>&#128230; <%= (analysis.code.repoSize / 1024).toFixed(1) %> MB</span>
+        <span>&#128197; Generated <%= generatedAt %></span>
+      </div>
+    </header>
+
+    <!-- Overview Cards -->
+    <div class="grid">
+      <div class="card">
+        <h3>Total Commits</h3>
+        <div class="value"><%= analysis.commits.totalCommits.toLocaleString() %></div>
+        <div class="sub"><%= analysis.commits.activeDays %> active days</div>
+      </div>
+      <div class="card">
+        <h3>Contributors</h3>
+        <div class="value"><%= analysis.commits.topContributors.length %></div>
+        <div class="sub">Top: <%= analysis.commits.topContributors[0]?.name || 'N/A' %></div>
+      </div>
+      <div class="card">
+        <h3>Open Issues</h3>
+        <div class="value"><%= analysis.issues.openIssues %></div>
+        <div class="sub"><%= analysis.issues.closeRate %>% close rate</div>
+      </div>
+      <div class="card">
+        <h3>Pull Requests</h3>
+        <div class="value"><%= analysis.prs.totalPRs %></div>
+        <div class="sub"><%= analysis.prs.mergeRate %>% merge rate</div>
+      </div>
+      <div class="card">
+        <h3>Branches</h3>
+        <div class="value"><%= analysis.code.branchCount %></div>
+        <div class="sub">Default: <%= analysis.code.defaultBranch %></div>
+      </div>
+      <div class="card">
+        <h3>Dependencies</h3>
+        <div class="value"><%= analysis.dependencies.dependencyCount %></div>
+        <div class="sub"><%= analysis.dependencies.devDependencyCount %> dev deps</div>
+      </div>
+    </div>
+
+    <!-- Commit Trends -->
+    <div class="section">
+      <h2>Commit Activity</h2>
+      <div class="chart-row">
+        <div class="chart-container">
+          <canvas id="commitTrend"></canvas>
+        </div>
+        <div class="chart-container">
+          <canvas id="contributors"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Languages -->
+    <div class="section">
+      <h2>Languages</h2>
+      <div class="chart-row">
+        <div class="chart-container">
+          <canvas id="languages"></canvas>
+        </div>
+        <div class="card">
+          <h3>Language Distribution</h3>
+          <% const langColors = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#f97316','#6366f1','#14b8a6','#f43f5e']; %>
+          <div class="lang-bar">
+            <% analysis.code.languages.slice(0, 10).forEach(function(lang, i) { %>
+              <div style="width:<%= lang.percentage %>%; background:<%= langColors[i] || '#64748b' %>"><%= lang.percentage %>%</div>
+            <% }); %>
+          </div>
+          <div class="lang-legend">
+            <% analysis.code.languages.slice(0, 10).forEach(function(lang, i) { %>
+              <span><span class="lang-dot" style="background:<%= langColors[i] || '#64748b' %>"></span><%= lang.name %> (<%= lang.percentage %>%)</span>
+            <% }); %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Issues & PRs -->
+    <div class="section">
+      <h2>Issues & Pull Requests</h2>
+      <div class="chart-row">
+        <div class="chart-container">
+          <canvas id="issueTrend"></canvas>
+        </div>
+        <div class="chart-container">
+          <canvas id="prTrend"></canvas>
+        </div>
+      </div>
+      <div class="grid" style="margin-top:1.5rem">
+        <div class="card">
+          <h3>Avg Issue Close Time</h3>
+          <div class="value"><%= analysis.issues.avgCloseDays %> days</div>
+          <div class="sub"><%= analysis.issues.staleIssues %> stale issues (>30 days)</div>
+        </div>
+        <div class="card">
+          <h3>Avg PR Merge Time</h3>
+          <div class="value"><%= analysis.prs.avgMergeDays %> days</div>
+          <div class="sub"><%= analysis.prs.mergedPRs %> merged total</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Contributors Table -->
+    <div class="section">
+      <h2>Top Contributors</h2>
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Commits</th><th>Share</th></tr></thead>
+        <tbody>
+          <% analysis.commits.topContributors.forEach(function(c, i) { %>
+          <tr>
+            <td><%= i + 1 %></td>
+            <td><%= c.name %></td>
+            <td><%= c.commits %></td>
+            <td><%= (c.commits / analysis.commits.totalCommits * 100).toFixed(1) %>%</td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Issue Labels -->
+    <% if (analysis.issues.topLabels.length > 0) { %>
+    <div class="section">
+      <h2>Top Issue Labels</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem">
+        <% analysis.issues.topLabels.forEach(function(l) { %>
+          <span class="badge badge-blue"><%= l.name %> (<%= l.count %>)</span>
+        <% }); %>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Dependencies -->
+    <% if (analysis.dependencies.hasPackageJson) { %>
+    <div class="section">
+      <h2>Dependencies</h2>
+      <div class="chart-row">
+        <div class="card">
+          <h3>Production Dependencies (<%= analysis.dependencies.dependencyCount %>)</h3>
+          <div style="max-height:200px;overflow:auto;font-size:0.9rem">
+            <%= analysis.dependencies.dependencies.join(', ') %>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Dev Dependencies (<%= analysis.dependencies.devDependencyCount %>)</h3>
+          <div style="max-height:200px;overflow:auto;font-size:0.9rem">
+            <%= analysis.dependencies.devDependencies.join(', ') %>
+          </div>
+        </div>
+      </div>
+      <% if (analysis.dependencies.scripts.length > 0) { %>
+      <div class="card" style="margin-top:1rem">
+        <h3>NPM Scripts</h3>
+        <table>
+          <thead><tr><th>Script</th><th>Command</th></tr></thead>
+          <tbody>
+            <% analysis.dependencies.scripts.forEach(function(s) { %>
+            <tr><td><code><%= s.name %></code></td><td><code><%= s.command %></code></td></tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+      <% } %>
+    </div>
+    <% } %>
+
+    <div class="footer">
+      Generated by <strong>GitInsight</strong> &mdash; <%= generatedAt %>
+    </div>
+  </div>
+
+  <script>
+    const charts = <%- charts %>;
+    const defaults = {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 12 } } },
+      },
+      scales: {
+        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(51,65,85,0.5)' } },
+        y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(51,65,85,0.5)' } },
+      },
+    };
+    const pieDefaults = {
+      responsive: true,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 12 } } },
+      },
+    };
+
+    Object.entries(charts).forEach(([id, config]) => {
+      const ctx = document.getElementById(id);
+      if (!ctx) return;
+      const opts = config.type === 'doughnut' ? pieDefaults : defaults;
+      new Chart(ctx, { ...config, options: { ...opts, ...config.options } });
+    });
+  </script>
+</body>
+</html>
