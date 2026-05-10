@@ -2,6 +2,15 @@ import { Octokit } from '@octokit/rest';
 import { getConfig } from '../commands/config';
 
 let octokitInstance: Octokit | null = null;
+let sslVerify = true;
+
+export function setSslVerify(value: boolean) {
+  sslVerify = value;
+  if (!value) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  }
+  octokitInstance = null;
+}
 
 export function getOctokit(): Octokit {
   if (!octokitInstance) {

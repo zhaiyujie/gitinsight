@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import { parseRepo, getRepoMeta, getCommits, getIssues, getPullRequests, getLanguages, getContributors, getPackageJson, getBranches } from '../api/github';
+import { parseRepo, getRepoMeta, getCommits, getIssues, getPullRequests, getLanguages, getContributors, getPackageJson, getBranches, setSslVerify } from '../api/github';
 import { analyzeCommits } from '../analyzers/commits';
 import { analyzeIssues } from '../analyzers/issues';
 import { analyzePRs } from '../analyzers/pull-requests';
@@ -16,7 +16,11 @@ export const analyzeCommand = new Command('analyze')
   .option('-u, --until <date>', 'End date for analysis (YYYY-MM-DD)')
   .option('-o, --output <dir>', 'Output directory', './reports')
   .option('-f, --format <format>', 'Output format: html or json', 'html')
+  .option('--no-ssl-verify', 'Disable SSL certificate verification')
   .action(async (repos: string[], options) => {
+    if (options.sslVerify === false) {
+      setSslVerify(false);
+    }
     for (const repoStr of repos) {
       await analyzeRepo(repoStr, options);
     }
